@@ -1,0 +1,61 @@
+version: "3"
+services:
+
+  strapi:
+    container_name: ${PROJECT_SLUG}_backend
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+      args:
+        - NODE_ENV=${ENVIRONMENT}
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_CLIENT: ${DATABASE_CLIENT}
+      DATABASE_HOST: mariadb
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PORT: ${DATABASE_PORT}
+      JWT_SECRET: ${JWT_SECRET}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      NODE_ENV: ${NODE_ENV}
+      CHOKIDAR_USEPOLLING: true
+    volumes:
+      - ./:/app
+      - /app/node_modules
+      - .env:/app/.env
+    ports:
+      - "1337:1337"
+    networks:
+      - internal
+    depends_on:
+      - mariadb
+
+  mariadb:
+    container_name: ${PROJECT_SLUG}_mariadb
+    platform: linux/amd64 # For platform error on Apple M1 chips
+    restart: unless-stopped
+    env_file: .env
+    image: mariadb:latest
+    command: --transaction-isolation=READ-COMMITTED --binlog-format=ROW
+    environment:
+      MARIADB_ROOT_PASSWORD: ${DATABASE_PASSWORD}
+      MARIADB_DATABASE: ${DATABASE_NAME}
+      MARIADB_ROOT_HOST: "%"
+      MARIADB_USER: ${DATABASE_USERNAME}
+      MARIADB_PASSWORD: ${DATABASE_PASSWORD}
+    volumes:
+      - strapi-data:/var/lib/mysql
+    ports:
+      - "3306:3306"
+    networks:
+      - internal
+
+volumes:
+  strapi-data:
+
+networks:
+  internal:
+    name: ${PROJECT_SLUG}_internal
+    driver: bridge
